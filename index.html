@@ -6,11 +6,21 @@
     <title>شات العرب المتطور</title>
     <style>
         body { font-family: Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 5px; display: flex; flex-direction: column; align-items: center; height: 100vh; box-sizing: border-box; }
-        .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 95vh; }
+        .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 95vh; position: relative; }
         .chat-header { background: #0084ff; color: white; padding: 10px 12px; text-align: center; font-size: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         .calls-group { display: flex; gap: 5px; }
         .voice-call-btn { background: #17a2b8; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
         .video-call-btn { background: #28a745; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+        
+        /* نافذة الاتصال المباشر داخل الصفحة */
+        #callScreen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 10; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px; box-sizing: border-box; }
+        .video-container { display: flex; gap: 10px; width: 100%; flex: 1; justify-content: center; align-items: center; flex-wrap: wrap; }
+        video { width: 45%; max-height: 60vh; background: #000; border-radius: 8px; object-fit: cover; }
+        .call-controls { display: flex; gap: 15px; margin-bottom: 20px; }
+        .call-ctrl-btn { padding: 10px 15px; border: none; border-radius: 30px; cursor: pointer; font-weight: bold; color: white; }
+        .hangup-btn { background: #dc3545; }
+        .toggle-cam-btn { background: #ffc107; color: black; }
+
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #e4e6eb; display: flex; flex-direction: column; gap: 10px; }
         .message { background: white; padding: 10px; border-radius: 8px; max-width: 75%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .message.sent { align-self: flex-start; background: #dcf8c6; }
@@ -25,6 +35,19 @@
 <body>
 
 <div class="chat-container">
+    <!-- شاشة الاتصال المباشر داخل التطبيق -->
+    <div id="callScreen">
+        <div style="color: white; font-size: 18px; margin-top: 10px;" id="callStatus">جاري الاتصال...</div>
+        <div class="video-container">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="call-controls">
+            <button class="call-ctrl-btn toggle-cam-btn" onclick="toggleCamera()">📷 فتح/إغلاق الكاميرا</button>
+            <button class="call-ctrl-btn hangup-btn" onclick="endCall()">🔴 إنهاء المكالمة</button>
+        </div>
+    </div>
+
     <div class="chat-header">
         <span>💬 شات العرب</span>
         <div class="calls-group">
@@ -52,6 +75,8 @@
 
 <script>
     let messages = JSON.parse(localStorage.getItem('chat_messages')) || [];
+    let localStream;
+    let isVideoEnabled = true;
 
     function displayMessages() {
         const box = document.getElementById('messageBox');
@@ -92,12 +117,50 @@
         reader.readAsDataURL(file);
     }
 
-    // دالة لبدء المكالمة (سواء صوتي بحت أو فيديو، مع إمكانية فتح الكاميرا وإغلاقها داخل المكالمة)
-    function startCall(audioOnly) {
-        const roomName = "ChatArabRoom_" + Math.random().toString(36).substring(7);
-        // إذا كان صوتياً، نضبط الكاميرا لتكون مغلقة عند البدء، وسيقدم لك النظام خيار فتحها لاحقاً داخل شاشة المكالمة
-        const configParam = audioOnly ? '#config.startWithVideoMuted=true' : '';
-        window.open(`https://meet.jit.si/${roomName}${configParam}`, '_blank');
+    // تفعيل الاتصال المباشر داخل نفس الصفحة
+    async function startCall(audioOnly) {
+        document.getElementById('callScreen').style.display = 'flex';
+        document.getElementById('callStatus').innerText = audioOnly ? "اتصال صوتي جاري..." : "مكالمة فيديو جارية...";
+        
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ 
+                video: !audioOnly, 
+                audio: true 
+            });
+            isVideoEnabled = !audioOnly;
+            document.getElementById('localVideo').srcObject = localStream;
+        } catch (err) {
+            alert("تعذر الوصول إلى الكاميرا أو الميكروفون.");
+            endCall();
+        }
+    }
+
+    // فتح وإغلاق الكاميرا أثناء الاتصال الصوتي أو الفيديو
+    function toggleCamera() {
+        if (!localStream) return;
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            isVideoEnabled = videoTrack.enabled;
+        } else {
+            // إذا بدأ الاتصال صوتياً ولم تكن الكاميرا موجودة بالأساس، نقوم بإضافتها
+            navigator.mediaDevices.getUserMedia({ video: true }).then(camStream => {
+                const newVideoTrack = camStream.getVideoTracks()[0];
+                localStream.addTrack(newVideoTrack);
+                document.getElementById('localVideo').srcObject = localStream;
+                isVideoEnabled = true;
+            }).catch(e => alert("لا يمكن تشغيل الكاميرا."));
+        }
+    }
+
+    // إنهاء المكالمة وإغلاق الكاميرا والميكروفون
+    function endCall() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+        document.getElementById('localVideo').srcObject = null;
+        document.getElementById('remoteVideo').srcObject = null;
+        document.getElementById('callScreen').style.display = 'none';
     }
 
     let mediaRecorder;
