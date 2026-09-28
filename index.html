@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شات العرب المتطور - مع نظام الأدمن</title>
+    <!-- كود إثبات الملكية لمحرك بحث جوجل -->
+    <meta name="google-site-verification" content="bky3NKB_2V55S5KcZxHBy_nb72oZXtlPUsHAJ7eEJ4g" />
+    <meta name="description" content="شات العرب الجماعي - تواصل مع الأصدقاء وتعرف على أشخاص جدد في غرف دردشة متعددة">
+    <meta name="keywords" content="شات العرب, دردشة جماعية, شات بنات وشباب, غرف دردشة">
+    
     <!-- استدعاء مكتبة Firebase للربط اللحظي -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -31,7 +36,6 @@
         .message.sent { align-self: flex-start; background: #dcf8c6; width: 100%; }
         .message img { max-width: 100%; border-radius: 6px; margin-top: 5px; }
         
-        /* زر الحذف الخاص بالأدمن */
         .delete-btn { background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; flex-shrink: 0; }
 
         .chat-input { display: flex; padding: 8px; background: white; border-top: 1px solid #ddd; gap: 5px; align-items: center; box-sizing: border-box; width: 100%; }
@@ -44,7 +48,6 @@
 <body>
 
 <div class="chat-container">
-    <!-- واجهة الدخول -->
     <div id="lobbyScreen" class="lobby-screen">
         <h2 style="text-align: center; color: #0084ff;">شات العرب الجماعي</h2>
         <input type="text" id="userNameInput" placeholder="ادخل اسمك الكريم...">
@@ -56,7 +59,6 @@
         <button class="lobby-btn" onclick="joinChat()">دخول الشات</button>
     </div>
 
-    <!-- واجهة الشات -->
     <div id="chatMain" class="chat-main">
         <div class="chat-header">
             <span id="roomTitle">💬 الغرفة</span>
@@ -101,8 +103,6 @@
     let currentUser = "";
     let currentRoom = "";
     let userStatusRef = null;
-
-    // اسمكِ كأدمن للشات
     const ADMIN_NAME = "رهف"; 
 
     function joinChat() {
