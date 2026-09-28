@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شات العرب المتطور - متعدد الغرف</title>
+    <title>شات العرب المتطور - مع نظام الأدمن</title>
     <!-- استدعاء مكتبة Firebase للربط اللحظي -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -12,7 +12,6 @@
         .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 95vh; position: relative; }
         .chat-header { background: #0084ff; color: white; padding: 10px 12px; text-align: center; font-size: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         
-        /* واجهة اختيار الغرف */
         .lobby-screen { padding: 20px; display: flex; flex-direction: column; gap: 15px; justify-content: center; height: 100%; }
         .lobby-screen input, .lobby-screen select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .lobby-btn { background: #0084ff; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: bold; }
@@ -20,19 +19,20 @@
         .chat-main { display: none; flex-direction: column; height: 100%; }
         .room-info { background: #e4e6eb; padding: 6px 15px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; color: #333; border-bottom: 1px solid #ddd; }
         
-        /* شاشة المحادثة وقائمة المتصلين الجانبية */
         .chat-body { display: flex; flex: 1; overflow: hidden; position: relative; }
         .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
         
-        /* قائمة المتصلين الجانبية */
         .users-sidebar { width: 130px; background: #fff; border-right: 1px solid #ddd; padding: 10px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 5px; }
         .users-sidebar h4 { margin: 0 0 8px 0; font-size: 13px; color: #0084ff; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 4px; }
         .online-user-item { padding: 4px 6px; background: #f0f2f5; border-radius: 4px; color: #333; display: flex; align-items: center; gap: 5px; }
         .online-dot { width: 8px; height: 8px; background: #28a745; border-radius: 50%; display: inline-block; }
 
-        .message { background: white; padding: 8px 12px; border-radius: 8px; max-width: 80%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        .message.sent { align-self: flex-start; background: #dcf8c6; }
+        .message { background: white; padding: 8px 12px; border-radius: 8px; max-width: 80%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .message.sent { align-self: flex-start; background: #dcf8c6; width: 100%; }
         .message img { max-width: 100%; border-radius: 6px; margin-top: 5px; }
+        
+        /* زر الحذف الخاص بالأدمن */
+        .delete-btn { background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; flex-shrink: 0; }
 
         .chat-input { display: flex; padding: 8px; background: white; border-top: 1px solid #ddd; gap: 5px; align-items: center; box-sizing: border-box; width: 100%; }
         .chat-input input[type="text"] { flex: 1; padding: 9px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; min-width: 0; }
@@ -44,7 +44,7 @@
 <body>
 
 <div class="chat-container">
-    <!-- واجهة تسجيل الدخول واختيار الغرفة -->
+    <!-- واجهة الدخول -->
     <div id="lobbyScreen" class="lobby-screen">
         <h2 style="text-align: center; color: #0084ff;">شات العرب الجماعي</h2>
         <input type="text" id="userNameInput" placeholder="ادخل اسمك الكريم...">
@@ -56,7 +56,7 @@
         <button class="lobby-btn" onclick="joinChat()">دخول الشات</button>
     </div>
 
-    <!-- واجهة الشات الرئيسية -->
+    <!-- واجهة الشات -->
     <div id="chatMain" class="chat-main">
         <div class="chat-header">
             <span id="roomTitle">💬 الغرفة</span>
@@ -67,12 +67,10 @@
         </div>
 
         <div class="chat-body">
-            <!-- قائمة المتصلين الحية -->
             <div class="users-sidebar" id="usersSidebar">
                 <h4>المتصلون</h4>
                 <div id="usersList"></div>
             </div>
-            <!-- رسائل الشات -->
             <div class="chat-messages" id="messageBox"></div>
         </div>
 
@@ -86,10 +84,10 @@
 </div>
 
 <script>
-    // تم ربط مشروعك chatarab-24ce3 بنجاح تام
     const firebaseConfig = {
         apiKey: "AIzaSyDHbZ16cPSly1W1oTmiW1o...",
         authDomain: "chatarab-24ce3.firebaseapp.com",
+        databaseURL: "https://chatarab-24ce3-default-rtdb.firebaseio.com",
         projectId: "chatarab-24ce3",
         storageBucket: "chatarab-24ce3.appspot.com",
         messagingSenderId: "138185717808",
@@ -104,6 +102,9 @@
     let currentRoom = "";
     let userStatusRef = null;
 
+    // اسمكِ كأدمن للشات
+    const ADMIN_NAME = "رهف"; 
+
     function joinChat() {
         currentUser = document.getElementById('userNameInput').value.trim();
         currentRoom = document.getElementById('roomSelect').value;
@@ -116,6 +117,10 @@
         document.getElementById('lobbyScreen').style.display = 'none';
         document.getElementById('chatMain').style.display = 'flex';
         document.getElementById('roomTitle').innerText = "💬 " + document.getElementById('roomSelect').selectedOptions[0].text;
+
+        if (currentUser === ADMIN_NAME) {
+            alert("أهلاً بكِ يا رهف.. تم تفعيل صلاحيات الأدمن لكِ في الشات!");
+        }
 
         setupPresenceAndLoad();
     }
@@ -137,7 +142,8 @@
                 const username = childSnapshot.key;
                 const userDiv = document.createElement('div');
                 userDiv.className = 'online-user-item';
-                userDiv.innerHTML = `<span class="online-dot"></span> ${username}`;
+                let displayName = username === ADMIN_NAME ? `👑 ${username}` : username;
+                userDiv.innerHTML = `<span class="online-dot"></span> ${displayName}`;
                 usersListDiv.appendChild(userDiv);
             });
         });
@@ -154,14 +160,32 @@
         const msgBox = document.getElementById('messageBox');
         const roomRef = db.ref('rooms/' + currentRoom + '/messages');
         
-        roomRef.limitToLast(50).on('child_added', (snapshot) => {
-            const msg = snapshot.val();
-            const div = document.createElement('div');
-            div.className = 'message sent';
-            div.innerHTML = `<strong>${msg.user}:</strong> ${msg.content}`;
-            msgBox.appendChild(div);
+        roomRef.on('value', (snapshot) => {
+            msgBox.innerHTML = '';
+            snapshot.forEach((childSnapshot) => {
+                const msgId = childSnapshot.key;
+                const msg = childSnapshot.val();
+                
+                const div = document.createElement('div');
+                div.className = 'message sent';
+                
+                let contentHTML = `<div><strong>${msg.user}:</strong> ${msg.content}</div>`;
+                
+                if (currentUser === ADMIN_NAME) {
+                    contentHTML += `<button class="delete-btn" onclick="deleteMessage('${msgId}')">حذف</button>`;
+                }
+                
+                div.innerHTML = contentHTML;
+                msgBox.appendChild(div);
+            });
             msgBox.scrollTop = msgBox.scrollHeight;
         });
+    }
+
+    function deleteMessage(msgId) {
+        if (confirm("هل أنتِ متأكدة من حذف هذه الرسالة؟")) {
+            db.ref('rooms/' + currentRoom + '/messages/' + msgId).remove();
+        }
     }
 
     function sendMessage() {
