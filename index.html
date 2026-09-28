@@ -3,28 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شات العرب المتطور</title>
+    <title>شات العرب المتطور - متعدد الغرف</title>
+    <!-- استدعاء مكتبة Firebase للربط اللحظي -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 5px; display: flex; flex-direction: column; align-items: center; height: 100vh; box-sizing: border-box; }
         .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 95vh; position: relative; }
         .chat-header { background: #0084ff; color: white; padding: 10px 12px; text-align: center; font-size: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .calls-group { display: flex; gap: 5px; }
-        .voice-call-btn { background: #17a2b8; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
-        .video-call-btn { background: #28a745; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; }
         
-        /* نافذة الاتصال المباشر داخل الصفحة */
-        #callScreen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 10; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px; box-sizing: border-box; }
-        .video-container { display: flex; gap: 10px; width: 100%; flex: 1; justify-content: center; align-items: center; flex-wrap: wrap; }
-        video { width: 45%; max-height: 60vh; background: #000; border-radius: 8px; object-fit: cover; }
-        .call-controls { display: flex; gap: 15px; margin-bottom: 20px; }
-        .call-ctrl-btn { padding: 10px 15px; border: none; border-radius: 30px; cursor: pointer; font-weight: bold; color: white; }
-        .hangup-btn { background: #dc3545; }
-        .toggle-cam-btn { background: #ffc107; color: black; }
+        /* واجهة اختيار الغرف */
+        .lobby-screen { padding: 20px; display: flex; flex-direction: column; gap: 15px; justify-content: center; height: 100%; }
+        .lobby-screen input, .lobby-screen select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .lobby-btn { background: #0084ff; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: bold; }
 
-        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #e4e6eb; display: flex; flex-direction: column; gap: 10px; }
-        .message { background: white; padding: 10px; border-radius: 8px; max-width: 75%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .chat-main { display: none; flex-direction: column; height: 100%; }
+        .room-info { background: #e4e6eb; padding: 6px 15px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; color: #333; border-bottom: 1px solid #ddd; }
+        
+        /* شاشة المحادثة وقائمة المتصلين الجانبية */
+        .chat-body { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* قائمة المتصلين الجانبية */
+        .users-sidebar { width: 130px; background: #fff; border-right: 1px solid #ddd; padding: 10px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 5px; }
+        .users-sidebar h4 { margin: 0 0 8px 0; font-size: 13px; color: #0084ff; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .online-user-item { padding: 4px 6px; background: #f0f2f5; border-radius: 4px; color: #333; display: flex; align-items: center; gap: 5px; }
+        .online-dot { width: 8px; height: 8px; background: #28a745; border-radius: 50%; display: inline-block; }
+
+        .message { background: white; padding: 8px 12px; border-radius: 8px; max-width: 80%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .message.sent { align-self: flex-start; background: #dcf8c6; }
         .message img { max-width: 100%; border-radius: 6px; margin-top: 5px; }
+
         .chat-input { display: flex; padding: 8px; background: white; border-top: 1px solid #ddd; gap: 5px; align-items: center; box-sizing: border-box; width: 100%; }
         .chat-input input[type="text"] { flex: 1; padding: 9px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; min-width: 0; }
         .chat-input input[type="file"] { display: none; }
@@ -35,69 +44,136 @@
 <body>
 
 <div class="chat-container">
-    <!-- شاشة الاتصال المباشر داخل التطبيق -->
-    <div id="callScreen">
-        <div style="color: white; font-size: 18px; margin-top: 10px;" id="callStatus">جاري الاتصال...</div>
-        <div class="video-container">
-            <video id="localVideo" autoplay playsinline muted></video>
-            <video id="remoteVideo" autoplay playsinline></video>
-        </div>
-        <div class="call-controls">
-            <button class="call-ctrl-btn toggle-cam-btn" onclick="toggleCamera()">📷 فتح/إغلاق الكاميرا</button>
-            <button class="call-ctrl-btn hangup-btn" onclick="endCall()">🔴 إنهاء المكالمة</button>
-        </div>
+    <!-- واجهة تسجيل الدخول واختيار الغرفة -->
+    <div id="lobbyScreen" class="lobby-screen">
+        <h2 style="text-align: center; color: #0084ff;">شات العرب الجماعي</h2>
+        <input type="text" id="userNameInput" placeholder="ادخل اسمك الكريم...">
+        <select id="roomSelect">
+            <option value="general">الغرفة العامة</option>
+            <option value="friends">غرفة الأصدقاء</option>
+            <option value="study">غرفة الدراسة والنقاش</option>
+        </select>
+        <button class="lobby-btn" onclick="joinChat()">دخول الشات</button>
     </div>
 
-    <div class="chat-header">
-        <span>💬 شات العرب</span>
-        <div class="calls-group">
-            <button class="voice-call-btn" onclick="startCall(true)">📞 اتصال صوتي</button>
-            <button class="video-call-btn" onclick="startCall(false)">📹 مكالمة فيديو</button>
+    <!-- واجهة الشات الرئيسية -->
+    <div id="chatMain" class="chat-main">
+        <div class="chat-header">
+            <span id="roomTitle">💬 الغرفة</span>
+            <button style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 12px;" onclick="leaveRoom()">خروج</button>
         </div>
-    </div>
+        <div class="room-info">
+            <span id="activeUserCount">المتصلون الآن في الغرفة</span>
+        </div>
 
-    <div class="chat-messages" id="messageBox"></div>
+        <div class="chat-body">
+            <!-- قائمة المتصلين الحية -->
+            <div class="users-sidebar" id="usersSidebar">
+                <h4>المتصلون</h4>
+                <div id="usersList"></div>
+            </div>
+            <!-- رسائل الشات -->
+            <div class="chat-messages" id="messageBox"></div>
+        </div>
 
-    <div class="chat-input">
-        <input type="text" id="messageInput" placeholder="اكتب رسالتك..." onkeypress="checkEnter(event)">
-        
-        <!-- زر رفع الصور -->
-        <label for="imageInput" class="action-btn" title="إرسال صورة">📷</label>
-        <input type="file" id="imageInput" accept="image/*" onchange="sendImage(event)">
-
-        <!-- زر تسجيل الصوت -->
-        <button id="recordBtn" class="action-btn" onclick="toggleRecord()" title="تسجيل صوت">🎤</button>
-
-        <!-- زر الإرسال -->
-        <button class="send-btn" onclick="sendMessage()">إرسال</button>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="اكتب رسالتك..." onkeypress="checkEnter(event)">
+            <label for="imageInput" class="action-btn" title="إرسال صورة">📷</label>
+            <input type="file" id="imageInput" accept="image/*" onchange="sendImage(event)">
+            <button class="send-btn" onclick="sendMessage()">إرسال</button>
+        </div>
     </div>
 </div>
 
 <script>
-    let messages = JSON.parse(localStorage.getItem('chat_messages')) || [];
-    let localStream;
-    let isVideoEnabled = true;
+    // تم ربط مشروعك chatarab-24ce3 بنجاح تام
+    const firebaseConfig = {
+        apiKey: "AIzaSyDHbZ16cPSly1W1oTmiW1o...",
+        authDomain: "chatarab-24ce3.firebaseapp.com",
+        projectId: "chatarab-24ce3",
+        storageBucket: "chatarab-24ce3.appspot.com",
+        messagingSenderId: "138185717808",
+        appId: "1:138185717808:web:be5b5f...",
+        measurementId: "G-8T0SRS8EH2"
+    };
 
-    function displayMessages() {
-        const box = document.getElementById('messageBox');
-        box.innerHTML = '';
-        messages.forEach(msg => {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentUser = "";
+    let currentRoom = "";
+    let userStatusRef = null;
+
+    function joinChat() {
+        currentUser = document.getElementById('userNameInput').value.trim();
+        currentRoom = document.getElementById('roomSelect').value;
+
+        if (!currentUser) {
+            alert("الرجاء إدخال اسمك أولاً!");
+            return;
+        }
+
+        document.getElementById('lobbyScreen').style.display = 'none';
+        document.getElementById('chatMain').style.display = 'flex';
+        document.getElementById('roomTitle').innerText = "💬 " + document.getElementById('roomSelect').selectedOptions[0].text;
+
+        setupPresenceAndLoad();
+    }
+
+    function setupPresenceAndLoad() {
+        userStatusRef = db.ref('rooms/' + currentRoom + '/activeUsers/' + currentUser);
+        userStatusRef.set(true);
+        userStatusRef.onDisconnect().remove();
+
+        loadOnlineUsers();
+        loadMessages();
+    }
+
+    function loadOnlineUsers() {
+        const usersListDiv = document.getElementById('usersList');
+        db.ref('rooms/' + currentRoom + '/activeUsers').on('value', (snapshot) => {
+            usersListDiv.innerHTML = '';
+            snapshot.forEach((childSnapshot) => {
+                const username = childSnapshot.key;
+                const userDiv = document.createElement('div');
+                userDiv.className = 'online-user-item';
+                userDiv.innerHTML = `<span class="online-dot"></span> ${username}`;
+                usersListDiv.appendChild(userDiv);
+            });
+        });
+    }
+
+    function leaveRoom() {
+        if (userStatusRef) {
+            userStatusRef.remove();
+        }
+        location.reload();
+    }
+
+    function loadMessages() {
+        const msgBox = document.getElementById('messageBox');
+        const roomRef = db.ref('rooms/' + currentRoom + '/messages');
+        
+        roomRef.limitToLast(50).on('child_added', (snapshot) => {
+            const msg = snapshot.val();
             const div = document.createElement('div');
             div.className = 'message sent';
-            div.innerHTML = `<strong>رهف:</strong> ${msg.content}`;
-            box.appendChild(div);
+            div.innerHTML = `<strong>${msg.user}:</strong> ${msg.content}`;
+            msgBox.appendChild(div);
+            msgBox.scrollTop = msgBox.scrollHeight;
         });
-        box.scrollTop = box.scrollHeight;
     }
 
     function sendMessage() {
         const input = document.getElementById('messageInput');
         if (!input.value.trim()) return;
 
-        messages.push({ content: input.value });
-        localStorage.setItem('chat_messages', JSON.stringify(messages));
+        const roomRef = db.ref('rooms/' + currentRoom + '/messages');
+        roomRef.push({
+            user: currentUser,
+            content: input.value
+        });
         input.value = '';
-        displayMessages();
     }
 
     function checkEnter(e) {
@@ -109,94 +185,14 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            const imgHtml = `<br><img src="${e.target.result}">`;
-            messages.push({ content: imgHtml });
-            localStorage.setItem('chat_messages', JSON.stringify(messages));
-            displayMessages();
+            const roomRef = db.ref('rooms/' + currentRoom + '/messages');
+            roomRef.push({
+                user: currentUser,
+                content: `<br><img src="${e.target.result}">`
+            });
         };
         reader.readAsDataURL(file);
     }
-
-    // تفعيل الاتصال المباشر داخل نفس الصفحة
-    async function startCall(audioOnly) {
-        document.getElementById('callScreen').style.display = 'flex';
-        document.getElementById('callStatus').innerText = audioOnly ? "اتصال صوتي جاري..." : "مكالمة فيديو جارية...";
-        
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ 
-                video: !audioOnly, 
-                audio: true 
-            });
-            isVideoEnabled = !audioOnly;
-            document.getElementById('localVideo').srcObject = localStream;
-        } catch (err) {
-            alert("تعذر الوصول إلى الكاميرا أو الميكروفون.");
-            endCall();
-        }
-    }
-
-    // فتح وإغلاق الكاميرا أثناء الاتصال الصوتي أو الفيديو
-    function toggleCamera() {
-        if (!localStream) return;
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
-            videoTrack.enabled = !videoTrack.enabled;
-            isVideoEnabled = videoTrack.enabled;
-        } else {
-            // إذا بدأ الاتصال صوتياً ولم تكن الكاميرا موجودة بالأساس، نقوم بإضافتها
-            navigator.mediaDevices.getUserMedia({ video: true }).then(camStream => {
-                const newVideoTrack = camStream.getVideoTracks()[0];
-                localStream.addTrack(newVideoTrack);
-                document.getElementById('localVideo').srcObject = localStream;
-                isVideoEnabled = true;
-            }).catch(e => alert("لا يمكن تشغيل الكاميرا."));
-        }
-    }
-
-    // إنهاء المكالمة وإغلاق الكاميرا والميكروفون
-    function endCall() {
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-        }
-        document.getElementById('localVideo').srcObject = null;
-        document.getElementById('remoteVideo').srcObject = null;
-        document.getElementById('callScreen').style.display = 'none';
-    }
-
-    let mediaRecorder;
-    let audioChunks = [];
-    let isRecording = false;
-
-    async function toggleRecord() {
-        const btn = document.getElementById('recordBtn');
-        if (!isRecording) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audioHtml = `<br><audio controls src="${audioUrl}"></audio>`;
-                    messages.push({ content: audioHtml });
-                    localStorage.setItem('chat_messages', JSON.stringify(messages));
-                    displayMessages();
-                };
-                mediaRecorder.start();
-                isRecording = true;
-                btn.style.background = '#ff4d4d';
-            } catch (err) {
-                alert("لا يمكن الوصول للميكروفون.");
-            }
-        } else {
-            mediaRecorder.stop();
-            isRecording = false;
-            btn.style.background = '#f0f2f5';
-        }
-    }
-
-    displayMessages();
 </script>
 
 </body>
