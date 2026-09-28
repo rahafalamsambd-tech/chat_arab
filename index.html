@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>شات العرب</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section id="login" class="card login">
+      <h1>شات العرب 💬</h1>
+      <p>ادخل باسم مستعار وابدأ الحديث مع الموجودين.</p>
+      <input id="name" maxlength="24" placeholder="اكتب اسمك">
+      <button id="join">دخول للشات</button>
+    </section>
+
+    <section id="chat" class="chat hidden">
+      <header>
+        <div>
+          <h1>الغرفة العامة</h1>
+          <span id="status">متصل</span>
+        </div>
+        <button id="leave" class="secondary">خروج</button>
+      </header>
+
+      <div class="layout">
+        <aside class="users">
+          <h3>المتصلون <span id="count">0</span></h3>
+          <ul id="users"></ul>
+        </aside>
+
+        <section class="room">
+          <div id="messages" class="messages"></div>
+          <form id="form" class="composer">
+            <input id="message" autocomplete="off" maxlength="500"
+                   placeholder="اكتب رسالتك...">
+            <button>إرسال</button>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
