@@ -3,73 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شات العرب</title>
+    <title>شات العرب المتطور</title>
     <style>
-        body { font-family: Tahoma, sans-serif; background: #eef2f3; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .chat-container { width: 100%; max-width: 500px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        #chat-box { height: 350px; border: 1px solid #ddd; border-radius: 5px; overflow-y: scroll; padding: 10px; margin-bottom: 15px; background: #fafafa; display: flex; flex-direction: column; gap: 8px; }
-        .message { padding: 8px 12px; border-radius: 6px; max-width: 80%; word-break: break-word; }
-        .my-message { background: #dcf8c6; align-self: flex-start; }
-        .other-message { background: #fff; border: 1px solid #ddd; align-self: flex-end; }
-        .input-group { display: flex; gap: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
-        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #006dd9; }
+        body { font-family: Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 90vh; }
+        .chat-header { background: #0084ff; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .call-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #e4e6eb; display: flex; flex-direction: column; gap: 10px; }
+        .message { background: white; padding: 10px; border-radius: 8px; max-width: 75%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .message.sent { align-self: flex-start; background: #dcf8c6; }
+        .message img { max-width: 100%; border-radius: 6px; margin-top: 5px; }
+        .chat-input { display: flex; padding: 10px; background: white; border-top: 1px solid #ddd; gap: 5px; align-items: center; }
+        .chat-input input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        .chat-input input[type="file"] { display: none; }
+        .action-btn { background: #f0f2f5; border: none; padding: 8px 10px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+        .send-btn { background: #0084ff; color: white; border: none; padding: 10px 15px; border-radius: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="chat-container">
-    <h2>💬 شات العرب</h2>
-    <div id="chat-box"></div>
-    <div class="input-group">
-        <input type="text" id="username" placeholder="اسمك..." style="max-width: 100px;">
-        <input type="text" id="message-input" placeholder="اكتب رسالتك هنا...">
-        <button onclick="sendMessage()">إرسال</button>
+    <div class="chat-header">
+        <span>💬 شات العرب المتطور</span>
+        <button class="call-btn" onclick="startCall()">📹 مكالمة فيديو</button>
+    </div>
+
+    <div class="chat-messages" id="messageBox"></div>
+
+    <div class="chat-input">
+        <input type="text" id="username" placeholder="اسمك..." style="max-width: 80px;" value="رهف">
+        <input type="text" id="messageInput" placeholder="اكتب رسالتك هنا..." onkeypress="checkEnter(event)">
+        
+        <!-- زر رفع الصور -->
+        <label for="imageInput" class="action-btn" title="إرسال صورة">📷</label>
+        <input type="file" id="imageInput" accept="image/*" onchange="sendImage(event)">
+
+        <!-- زر تسجيل الصوت -->
+        <button id="recordBtn" class="action-btn" onclick="toggleRecord()" title="تسجيل صوت">🎤</button>
+
+        <button class="send-btn" onclick="sendMessage()">إرسال</button>
     </div>
 </div>
 
 <script>
-    const chatBox = document.getElementById('chat-box');
-    const messageInput = document.getElementById('message-input');
-    const usernameInput = document.getElementById('username');
-
-    // تحميل الرسائل المحفوظة مسبقاً
     let messages = JSON.parse(localStorage.getItem('chat_messages')) || [];
 
     function displayMessages() {
-        chatBox.innerHTML = '';
+        const box = document.getElementById('messageBox');
+        box.innerHTML = '';
         messages.forEach(msg => {
             const div = document.createElement('div');
-            div.className = 'message other-message';
-            div.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
-            chatBox.appendChild(div);
+            div.className = 'message sent';
+            div.innerHTML = `<strong>${msg.user}:</strong> ${msg.content}`;
+            box.appendChild(div);
         });
-        chatBox.scrollTop = chatBox.scrollHeight;
+        box.scrollTop = box.scrollHeight;
     }
 
     function sendMessage() {
-        const text = messageInput.value.trim();
-        const user = usernameInput.value.trim() || 'زائر';
-        if (text === '') return;
+        const user = document.getElementById('username').value || 'زائر';
+        const input = document.getElementById('messageInput');
+        if (!input.value.trim()) return;
 
-        const newMsg = { user: user, text: text };
-        messages.push(newMsg);
+        messages.push({ user: user, content: input.value });
         localStorage.setItem('chat_messages', JSON.stringify(messages));
-
-        messageInput.value = '';
+        input.value = '';
         displayMessages();
     }
 
-    // تحديث الرسائل تلقائياً
-    setInterval(() => {
-        let savedMessages = JSON.parse(localStorage.getItem('chat_messages')) || [];
-        if (savedMessages.length !== messages.length) {
-            messages = savedMessages;
+    function checkEnter(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+
+    // إرسال الصور وتحويلها لـ Base64 لتظهر مباشرة
+    function sendImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const user = document.getElementById('username').value || 'زائر';
+            const imgHtml = `<br><img src="${e.target.result}">`;
+            messages.push({ user: user, content: imgHtml });
+            localStorage.setItem('chat_messages', JSON.stringify(messages));
             displayMessages();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ميزة مكالمات الفيديو والصوت مثل Jitsi
+    function startCall() {
+        const roomName = "ChatArabRoom_" + Math.random().toString(36.substring(7));
+        window.open(`https://meet.jit.si/${roomName}`, '_blank');
+    }
+
+    // تسجيل الصوت البسيط
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    async function toggleRecord() {
+        const btn = document.getElementById('recordBtn');
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const user = document.getElementById('username').value || 'زائر';
+                    const audioHtml = `<br><audio controls src="${audioUrl}"></audio>`;
+                    messages.push({ user: user, content: audioHtml });
+                    localStorage.setItem('chat_messages', JSON.stringify(messages));
+                    displayMessages();
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                btn.style.background = '#ff4d4d';
+                btn.title = "إيقاف التسجيل";
+            } catch (err) {
+                alert("لا يمكن الوصول للميكروفون.");
+            }
+        } else {
+            mediaRecorder.stop();
+            isRecording = false;
+            btn.style.background = '#f0f2f5';
+            btn.title = "تسجيل صوت";
         }
-    }, 1000);
+    }
 
     displayMessages();
 </script>
