@@ -3,75 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شات عربي - الدردشة العامة</title>
+    <title>شات العرب</title>
     <style>
-        body { font-family: Tahoma, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-        h2 { text-align: center; color: #333; margin-bottom: 10px; }
-        #chat-container { flex: 1; background: white; border-radius: 10px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow-y: auto; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .message { background: #e3f2fd; padding: 10px; border-radius: 8px; max-width: 75%; word-break: break-word; }
-        .message span { display: block; font-weight: bold; font-size: 12px; color: #555; margin-bottom: 3px; }
-        #input-container { display: flex; gap: 10px; }
-        #username { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 25%; }
-        #message-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        body { font-family: Tahoma, sans-serif; background: #eef2f3; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .chat-container { width: 100%; max-width: 500px; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        #chat-box { height: 350px; border: 1px solid #ddd; border-radius: 5px; overflow-y: scroll; padding: 10px; margin-bottom: 15px; background: #fafafa; display: flex; flex-direction: column; gap: 8px; }
+        .message { padding: 8px 12px; border-radius: 6px; max-width: 80%; word-break: break-word; }
+        .my-message { background: #dcf8c6; align-self: flex-start; }
+        .other-message { background: #fff; border: 1px solid #ddd; align-self: flex-end; }
+        .input-group { display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 5px; cursor: pointer; }
         button:hover { background: #006dd9; }
     </style>
 </head>
 <body>
 
-    <h2>💬 الشات العربي العام</h2>
-
-    <div id="chat-container">
-        <!-- ستظهر الرسائل هنا تلقائياً -->
+<div class="chat-container">
+    <h2>💬 شات العرب</h2>
+    <div id="chat-box"></div>
+    <div class="input-group">
+        <input type="text" id="username" placeholder="اسمك..." style="max-width: 100px;">
+        <input type="text" id="message-input" placeholder="اكتب رسالتك هنا...">
+        <button onclick="sendMessage()">إرسال</button>
     </div>
+</div>
 
-    <div id="input-container">
-        <input type="text" id="username" placeholder="اسمك..." required>
-        <input type="text" id="message-input" placeholder="اكتب رسالتك هنا..." required>
-        <button id="send-btn">إرسال</button>
-    </div>
+<script>
+    const chatBox = document.getElementById('chat-box');
+    const messageInput = document.getElementById('message-input');
+    const usernameInput = document.getElementById('username');
 
-    <!-- ربط مكتبة فايربيس (Firebase) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, set, onChildAdded } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    // تحميل الرسائل المحفوظة مسبقاً
+    let messages = JSON.parse(localStorage.getItem('chat_messages')) || [];
 
-        // سنقوم بوضع بيانات قاعدة البيانات هنا لاحقاً
-        const firebaseConfig = {
-            // سنضعها في الخطوة القادمة
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        const chatContainer = document.getElementById('chat-container');
-        const usernameInput = document.getElementById('username');
-        const messageInput = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
-
-        sendBtn.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            const text = messageInput.value.trim();
-            if(username && text) {
-                const messagesRef = ref(db, 'messages');
-                push(messagesRef, {
-                    username: username,
-                    text: text,
-                    timestamp: Date.now()
-                });
-                messageInput.value = '';
-            }
+    function displayMessages() {
+        chatBox.innerHTML = '';
+        messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = 'message other-message';
+            div.innerHTML = `<strong>${msg.user}:</strong> ${msg.text}`;
+            chatBox.appendChild(div);
         });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-        const messagesRef = ref(db, 'messages');
-        onChildAdded(messagesRef, (data) => {
-            const msg = data.val();
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message';
-            msgDiv.innerHTML = `<span>${msg.username}</span>${msg.text}`;
-            chatContainer.appendChild(msgDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        });
-    </script>
+    function sendMessage() {
+        const text = messageInput.value.trim();
+        const user = usernameInput.value.trim() || 'زائر';
+        if (text === '') return;
+
+        const newMsg = { user: user, text: text };
+        messages.push(newMsg);
+        localStorage.setItem('chat_messages', JSON.stringify(messages));
+
+        messageInput.value = '';
+        displayMessages();
+    }
+
+    // تحديث الرسائل تلقائياً
+    setInterval(() => {
+        let savedMessages = JSON.parse(localStorage.getItem('chat_messages')) || [];
+        if (savedMessages.length !== messages.length) {
+            messages = savedMessages;
+            displayMessages();
+        }
+    }, 1000);
+
+    displayMessages();
+</script>
+
 </body>
 </html>
